@@ -339,7 +339,7 @@ import rawSearch from '../rawSearch';
                     let unregistered = photos.filter(photo => !existed[getUrlHash(photo)]);
 
                     const urlsFromSearch = rawSearch.map(r => `https://farm${r.farm}.staticflickr.com/${r.server}/${r.id}_${r.secret}.jpg`);
-                    const rawUnregistered = urlsFromSearch.filter(raw => !existed[getUrlHash(filter)]);
+                    const rawUnregistered = urlsFromSearch.filter(raw => !existed[getUrlHash(raw)]);
                     
                     this.data = storageData;
                     this.unregistered = [...rawUnregistered, ...unregistered];
