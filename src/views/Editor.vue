@@ -97,8 +97,10 @@
 
     import models from '../models'
     import photos from '../photos'
+    import searchResults from '../rawSearch'
 
     import getFlickrId from '../get-flickr-id'
+import rawSearch from '../rawSearch';
 
     const THUMB_SIZE = 160;
     const STORAGE_KEY = 'ars-data';
@@ -334,10 +336,13 @@
                     // remove duplicates
                     const existed = {};
                     ([...storageData, ...data]).forEach(image => existed[getUrlHash(image.url)] = true);
-                    const unregistered = photos.filter(photo => !existed[getUrlHash(photo)]);
+                    let unregistered = photos.filter(photo => !existed[getUrlHash(photo)]);
 
+                    const urlsFromSearch = rawSearch.map(r => `https://farm${r.farm}.staticflickr.com/${r.server}/${r.id}_${r.secret}.jpg`);
+                    const rawUnregistered = urlsFromSearch.filter(raw => !existed[getUrlHash(filter)]);
+                    
                     this.data = storageData;
-                    this.unregistered = unregistered;
+                    this.unregistered = [...rawUnregistered, ...unregistered];
                 });
         },
         beforeDestroy() {
