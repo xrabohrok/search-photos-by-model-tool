@@ -31,6 +31,14 @@
         </div>
 
         <div class="column-2">
+            <div class="toolbar" style="border-style:solid; border-color:#E79191; border-radius:5px; padding-top:7px; padding-left:4px; margin-bottom:5px;">
+                <a-input v-model="searchTags"
+                    placeholder="Flickr Search Tags"
+                    style="margin-bottom: 8px; margin-right: 8px;"
+                />
+                <a-button @click="searchFlickr" style="margin-right: 8px">Search!</a-button>
+                <a-button @click="paginateSearch" style="margin-right: 8px">Fetch page {{currentPage + 1}}</a-button>
+            </div>
             <div class="toolbar">
                 <a-input v-model="imageUrl"
                          placeholder="Input image url"
@@ -128,6 +136,10 @@ import rawSearch from '../rawSearch';
         return getFlickrId(url) || url;
     }
 
+    function convertToURLs(searchResults){
+        return searchResults.map(r => `https://farm${r.farm}.staticflickr.com/${r.server}/${r.id}_${r.secret}.jpg`);
+    } 
+
     export default {
         components: {ModelViewer, ImageThumb},
         data() {
@@ -139,10 +151,13 @@ import rawSearch from '../rawSearch';
                 rotateZ: 0,
                 zoom: 10,
                 imageUrl: '',
+                searchTags:'',
+                currentPage: 1,
                 imageZoom: 100,
                 imageWidth: 0,
                 imageHeight: 0,
                 imageLoading: false,
+                existed: {},
                 imageClip: {
                     left: 0,
                     top: 0,
@@ -323,7 +338,45 @@ import rawSearch from '../rawSearch';
             },
             getOne() {
                 this.imageUrl = this.unregistered.shift();
+            },
+            searchFlickr(){
+                fetch(`https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=25f4f47c52460a0ffbad36186069f661&license=2%2C3%2C4%2C5%2C6%2C9&format=json&nojsoncallback=1&tags=${this.searchTags}`)
+                    .then(response =>{
+                            return response.json();
+                        }
+                    )
+                    .then((value) =>{
+                            let storageData = localStorage.getItem(STORAGE_KEY);
+                            storageData = storageData && JSON.parse(storageData) || [];
+
+                            let urlsFromSearch = convertToURLs(value.photos.photo);
+                            const searchUrls = urlsFromSearch.filter(url => !this.existed[getUrlHash(url)]);
+                            
+                            this.unregistered = [...searchUrls, ...this.unregistered];
+                        }
+                    );
+            },
+            paginateSearch() {
+                this.currentPage++;
+                fetch(`https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=25f4f47c52460a0ffbad36186069f661&license=2%2C3%2C4%2C5%2C6%2C9&format=json&nojsoncallback=1&tags=${this.searchTags}&page=${this.currentPage}`)
+                    .then(response =>{
+                            return response.json();
+                        }
+                    )
+                    .then((value) =>{
+                            
+                            let storageData = localStorage.getItem(STORAGE_KEY);
+                            storageData = storageData && JSON.parse(storageData) || [];
+
+                            console.log(value);
+                            let urlsFromSearch = convertToURLs(value.photos.photo);
+                            const searchUrls = urlsFromSearch.filter(url => !this.existed[getUrlHash(url)]);
+                            
+                            this.unregistered = [...searchUrls, ...this.unregistered];
+                        }
+                    );
             }
+
         },
         mounted() {
             window.addEventListener('mouseup', this.imageClipDragStop);
@@ -334,12 +387,11 @@ import rawSearch from '../rawSearch';
                     storageData = storageData && JSON.parse(storageData) || [];
 
                     // remove duplicates
-                    const existed = {};
-                    ([...storageData, ...data]).forEach(image => existed[getUrlHash(image.url)] = true);
-                    let unregistered = photos.filter(photo => !existed[getUrlHash(photo)]);
+                    ([...storageData, ...data]).forEach(image => this.existed[getUrlHash(image.url)] = true);
+                    let unregistered = photos.filter(photo => !this.existed[getUrlHash(photo)]);
 
-                    const urlsFromSearch = rawSearch.map(r => `https://farm${r.farm}.staticflickr.com/${r.server}/${r.id}_${r.secret}.jpg`);
-                    const rawUnregistered = urlsFromSearch.filter(raw => !existed[getUrlHash(raw)]);
+                    let urlsFromSearch = convertToURLs(rawSearch);
+                    const rawUnregistered = urlsFromSearch.filter(raw => !this.existed[getUrlHash(raw)]);
                     
                     this.data = storageData;
                     this.unregistered = [...rawUnregistered, ...unregistered];
