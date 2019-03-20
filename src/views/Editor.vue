@@ -39,6 +39,9 @@
                 <a-button @click="searchFlickr" style="margin-right: 8px">Search!</a-button>
                 <a-button @click="paginateSearch" style="margin-right: 8px">Fetch page {{currentPage + 1}}</a-button>
             </div>
+            <div v-if=lastSearchError >
+                <div style="font-color:red;">{{lastSearchError}}</div>
+            </div>
             <div class="toolbar">
                 <a-input v-model="imageUrl"
                          placeholder="Input image url"
@@ -152,6 +155,7 @@ import rawSearch from '../rawSearch';
                 zoom: 10,
                 imageUrl: '',
                 searchTags:'',
+                lastSearchError: null,
                 currentPage: 1,
                 imageZoom: 100,
                 imageWidth: 0,
@@ -342,9 +346,19 @@ import rawSearch from '../rawSearch';
             searchFlickr(){
                 fetch(`https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=25f4f47c52460a0ffbad36186069f661&license=2%2C3%2C4%2C5%2C6%2C9&format=json&nojsoncallback=1&tags=${this.searchTags}`)
                     .then(response =>{
-                            return response.json();
+                            if(response.ok){                                
+                                return response.json();
+                            }
+                            throw new Error(`The request failed: ${response.body}`);
                         }
                     )
+                    .then( body => {
+                        console.log(body);
+                        if(body.code != "200"){
+                            throw new Error(`Flickr bounced the request: ${body.message}`)
+                        }
+                        return body;
+                    })
                     .then((value) =>{
                             let storageData = localStorage.getItem(STORAGE_KEY);
                             storageData = storageData && JSON.parse(storageData) || [];
@@ -354,7 +368,10 @@ import rawSearch from '../rawSearch';
                             
                             this.unregistered = [...searchUrls, ...this.unregistered];
                         }
-                    );
+                    ).catch((error)=>{
+                        this.lastSearchError = error.message;
+                        console.log(error.message);
+                    });
             },
             paginateSearch() {
                 this.currentPage++;
