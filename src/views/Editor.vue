@@ -31,10 +31,10 @@
         </div>
 
         <div class="column-2">
-            <div class="toolbar">
-                <a-input v-model="apiKey" placeholder="Paste your Flickr API key here to enable inline search" style="margin-bottom: 8px; margin-right: 8px;"/>
+            <div class="toolbar" v-if="!apiFromEnv">
+                <a-input v-model="apiKey"  placeholder="Paste your Flickr API key here to enable inline search" style="margin-bottom: 8px; margin-right: 8px;"/>
             </div>
-            <div class="toolbar" v-if=apiKey style="border-style:solid; border-color:#E79191; border-radius:5px; padding-top:7px; padding-left:4px; margin-bottom:5px;">
+            <div class="toolbar" v-if="apiKey" style="border-style:solid; border-color:#E79191; border-radius:5px; padding-top:7px; padding-left:4px; margin-bottom:5px;">
                 <a-input v-model="searchTags"
                     placeholder="Flickr Search Tags"
                     style="margin-bottom: 8px; margin-right: 8px;"
@@ -114,7 +114,7 @@
     import searchResults from '../rawSearch'
 
     import getFlickrId from '../get-flickr-id'
-import rawSearch from '../rawSearch';
+    import rawSearch from '../rawSearch';
 
     const THUMB_SIZE = 160;
     const STORAGE_KEY = 'ars-data';
@@ -160,6 +160,7 @@ import rawSearch from '../rawSearch';
                 searchTags:'',
                 lastSearchError: null,
                 apiKey:null,
+                apiFromEnv: false,
                 currentPage: 1,
                 imageZoom: 100,
                 imageWidth: 0,
@@ -388,6 +389,14 @@ import rawSearch from '../rawSearch';
 
             import('../data')
                 .then(({default: data}) => {
+                    //load Flickr api key from env if able
+                    if(process.env.VUE_APP_FLICKR_API && process.env.VUE_APP_FLICKR_API.length == 32){
+                        this.apiFromEnv = true;
+                        this.apiKey = process.env.VUE_APP_FLICKR_API;
+                    }else{
+                        console.log("Could not find env, allowing manual entry");
+                    }
+
                     let storageData = localStorage.getItem(STORAGE_KEY);
                     storageData = storageData && JSON.parse(storageData) || [];
 
